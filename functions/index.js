@@ -1,20 +1,41 @@
 
 'use strict';
 
+const reduce = Function.bind.call(Function.call, Array.prototype.reduce);
+const isEnumerable = Function.bind.call(Function.call, Object.prototype.propertyIsEnumerable);
+const concat = Function.bind.call(Function.call, Array.prototype.concat);
+const keys = Reflect.ownKeys;
+
+if (!Object.values) {
+	Object.values = function values(O) {
+		return reduce(keys(O), (v, k) => concat(v, typeof k === 'string' && isEnumerable(O, k) ? [O[k]] : []), []);
+	};
+}
+
+if (!Object.entries) {
+	Object.entries = function entries(O) {
+		return reduce(keys(O), (e, k) => concat(e, typeof k === 'string' && isEnumerable(O, k) ? [[k, O[k]]] : []), []);
+	};
+}
+
 const functions = require('firebase-functions');
 
 const admin = require('firebase-admin');
 admin.initializeApp();
 
-exports.gameStart = functions.database.ref('/rooms/{roomName}')
-    .onWrite((snapshot, context) => {
-      const original = snapshot.val();
+
+exports.gameManager = functions.database.ref('/rooms/{roomName}')
+    .onWrite((change,  context) => {
+      const original = change.after.val();
+
+      // if (!snapshot) return
+      // const original = snapshot.val();
       
-      if (original && (original.is_start == false)) {
+      if (original) {
         const room = Object.assign(
           original,
           {
-            users: Object.entries(val.users).map(([i, v]) => 
+            users: Object.entries(original.users).map(([i, v]) => 
               Object.assign(
                 {id: i},
                 v
@@ -22,11 +43,22 @@ exports.gameStart = functions.database.ref('/rooms/{roomName}')
             )
           }
         )
-        if (room.users.length >= 2 && room.users.every(x => x.is_ready)) {
-          const firstTargetUserId = room.users[Math.floor(Math.random() * room.users.length)].id
-          admin.database().ref('rooms/' + snapshot.params.roomName ).update({is_start: true})
-          admin.database().ref('rooms/' + snapshot.params.roomName + "/users/" + firstTargetUserId).update({has_ball: true})
+        
+        // game start func
+        if (original.is_start == false) {
+          if (room.users.length >= 2 && room.users.every(x => x.is_ready)) {
+            const firstTargetUserId = room.users[Math.floor(Math.random() * room.users.length)].id
+            return admin.database().ref('rooms/' + context.params.roomName ).update({is_start: true, ball_holding_user: firstTargetUserId})
+          }
         }
+
+        console.log('rooms/' + context.params.roomName)
+
+        if (original.users.length == 0) {
+          console.log("delete")
+          return admin.database().ref('rooms/' + context.params.roomName ).remove()
+        }
+
       }
-      return 
+
     });
