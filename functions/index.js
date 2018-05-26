@@ -35,7 +35,7 @@ exports.gameManager = functions.database.ref('/rooms/{roomName}')
         const room = Object.assign(
           original,
           {
-            users: Object.entries(original.users).map(([i, v]) => 
+            users: Object.entries(original.users || {}).map(([i, v]) => 
               Object.assign(
                 {id: i},
                 v
