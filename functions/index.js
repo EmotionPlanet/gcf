@@ -50,8 +50,7 @@ exports.gameManager = functions.database.ref('/rooms/{roomName}')
             const firstTargetUserId = room.users[Math.floor(Math.random() * room.users.length)].id
 
             let date = new Date()
-            date.setSeconds( (parseInt(original.game_time) * 1000) + date.getSeconds() + 2000);
-            console.log(date, "date debug point")
+            date.setSeconds( (parseInt(original.game_time || 30) * 1000) + date.getSeconds() + 2000 + 1000*60*60*9);
             return admin.database().ref('rooms/' + context.params.roomName ).update(
               {
                 is_start: true,
